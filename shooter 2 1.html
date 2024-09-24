@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SHOOTER v1.0</title>
+  <style>
+    body
+    {
+      margin: 0;
+      padding: 0;
+      background-color: #c0c0c0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      flex-direction: column;
+    }
+
+    #game-container
+    {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+    }
+
+    #button-container
+    {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    canvas
+    {
+      background-color: #b0c4de;
+      border: 2px solid black;
+      display: block;
+    }
+
+    .botan
+    {
+      width: 150px;
+      height: 50px;
+      font-size: 30px;
+      padding: 10px;
+      border: 1px solid #000000;
+    }
+
+    #score,
+    #timer
+    {
+      font-size: 40px;
+      margin: 10px;
+      text-align: center;
+    }
+
+    #ranking
+    {
+      position: absolute;
+      right: 20px;
+      top: 20px;
+      font-size: 20px;
+      text-align: right;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="game-container">
+    <h1><i>SHOOTER v1.0</i></h1>
+    <button class="botan" id="startButton">Start!</button>
+    <button class="botan" id="replayButton">Replay!</button>
+    <div id="score">Score : 0</div>
+    <div id="timer">Timer : 60</div>
+    <canvas id="gameCanvas" width="900" height="900"></canvas>
+    <div id="ranking">
+      <h2>ランキング</h2>
+      <ol id="rankingList"></ol>
+    </div>
+  </div>
+
+  <script>
+    window.onload = function ()
+    {
+      replayButton.disabled = true; // replayButton OFF
+      updateRanking();
+    }
+
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const scoreDisplay = document.getElementById("score");
+    const timerDisplay = document.getElementById("timer");
+    const startButton = document.getElementById("startButton");
+    const replayButton = document.getElementById("replayButton");
+
+    let score = 0;
+    let timer;
+
+    startButton.addEventListener("click", startGame);
+    replayButton.addEventListener("click", replayGame);
+
+    function startGame()
+    {
+      score = 0;
+      scoreDisplay.textContent = "Score : " + score;
+      canvas.style.pointerEvents = 'auto';
+      startButton.disabled = true; // StartButton OFF
+      replayButton.disabled = false; // replayButton ON
+      drawTarget();
+      startTimer(60);
+    }
+
+    function replayGame()
+    {
+      score = 0;
+      timerDisplay.textContent = "Timer Stopped."
+      clearInterval(timer);
+      canvas.style.pointerEvents = 'none';
+      replayButton.disabled = true; // replayButton OFF
+      startButton.disabled = false; // StartButton ON
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    // タイマー関数
+    function startTimer(seconds) {
+      let remainingTime = seconds;
+      timerDisplay.textContent = "Timer : " + remainingTime;
+      timer = setInterval(function () {
+        remainingTime--;
+        if (remainingTime < 0) {
+          const audio = new Audio('congratulation.mp3');
+          audio.play();
+          clearInterval(timer);
+          saveScore(score);
+          updateRanking();
+          alert("Finish！ Score : " + score);
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          return;
+        }
+        timerDisplay.textContent = "Timer :  " + remainingTime;
+      }, 1000);
+    }
+
+    function drawTarget() {
+      const targetImage = new Image();
+      targetImage.src = "shootinggame_no_mato.png"; // 画像の読み込み
+
+      targetImage.onload = function () {
+        // 画像が読み込まれた後に的を描画
+        const x = Math.random() * (canvas.width - targetImage.width);
+        const y = Math.random() * (canvas.height - targetImage.height);
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height); // 以前の的を消去
+        ctx.drawImage(targetImage, x, y);
+
+        // クリック処理
+        canvas.onclick = function (event) {
+          const rect = canvas.getBoundingClientRect();
+          const mouseX = event.clientX - rect.left;
+          const mouseY = event.clientY - rect.top;
+
+          // エイムチェック
+          if (mouseX >= x && mouseX <= x + targetImage.width && mouseY >= y && mouseY <= y + targetImage.height) {
+            const audio = new Audio('hitsound.mp3');
+            audio.play();
+            score++;
+            scoreDisplay.textContent = "Score: " + score;
+            ctx.clearRect(x, y, targetImage.width, targetImage.height); // 的を消す
+            drawTarget(); // 新しい的を描画
+          }
+        }
+      };
+    }
+
+    function saveScore(score)
+    {
+      let scores = JSON.parse(localStorage.getItem('scores')) || [];
+      scores.push(score);
+      scores.sort((a, b) => b - a); // 昇順ソート
+      if (scores.length > 5) {
+        scores = scores.slice(0, 5); // 上位5スコアのみ保持
+      }
+      localStorage.setItem('scores', JSON.stringify(scores));
+    }
+
+    function updateRanking()
+    {
+      const rankingList = document.getElementById('rankingList');
+      rankingList.innerHTML = '';
+      let scores = JSON.parse(localStorage.getItem('scores')) || [];
+      scores = scores.sort((a, b) => b - a); // 降順ソート
+      scores.forEach((score, index) => {
+      const li = document.createElement('li');
+      li.textContent = `${score}`;
+      rankingList.appendChild(li);
+  });
+}
+  </script>
+</body>
+
+</html>
